@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Helpers",
+    "\\Models",
+    "\\Services",
+    "\\ViewModels",
+    "\\Views"
+  ],
+  "SelectedNode": "\\ViewModels\\BatchExportViewModel.cs",
+  "PreviewInSolutionExplorer": false
+}

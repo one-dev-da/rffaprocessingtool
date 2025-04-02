@@ -1,0 +1,69 @@
+﻿<Window x:Class="RffaDataComparisonTool.Views.NonDuplicatesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RffaDataComparisonTool.Views"
+        mc:Ignorable="d"
+        Title="Non-Duplicate RSBSA Numbers" Height="500" Width="700"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Margin="0,0,0,5">
+            <Run Text="Non-Duplicate RSBSA Numbers" FontSize="18" FontWeight="Bold"/>
+            <Run Text=" (" FontSize="18" FontWeight="Bold"/>
+            <Run Text="{Binding TotalNonDuplicates}" FontSize="18" FontWeight="Bold"/>
+            <Run Text=" total)" FontSize="18" FontWeight="Bold"/>
+        </TextBlock>
+
+        <!-- Description -->
+        <TextBlock Grid.Row="1" 
+                   Text="These RSBSA numbers were found in the MAGARAO-RFFA file but not in the IMP Topup file."
+                   Margin="0,0,0,10"/>
+
+        <!-- Very simple content panel -->
+        <ScrollViewer Grid.Row="2" 
+                      VerticalScrollBarVisibility="Auto" 
+                      HorizontalScrollBarVisibility="Auto"
+                      Margin="0,0,0,10">
+            <Border BorderThickness="1" BorderBrush="#E0E0E0">
+                <StackPanel x:Name="ContentPanel" Margin="10"/>
+            </Border>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <UniformGrid Grid.Row="3" Columns="3">
+            <Button Content="Copy All to Clipboard" 
+                    Click="CopyButton_Click"
+                    Width="160" Height="35"
+                    Margin="0,0,5,0"
+                    Background="#2196F3"
+                    Foreground="White"
+                    BorderThickness="0"/>
+
+            <Button Content="Export to File" 
+                    Click="ExportButton_Click"
+                    Width="160" Height="35"
+                    Margin="5,0,5,0"
+                    Background="#2196F3"
+                    Foreground="White"
+                    BorderThickness="0"/>
+
+            <Button Content="Close" 
+                    Click="CloseButton_Click"
+                    Width="100" Height="35"
+                    Margin="5,0,0,0"
+                    Background="#9E9E9E"
+                    Foreground="White"
+                    BorderThickness="0"/>
+        </UniformGrid>
+    </Grid>
+</Window>
