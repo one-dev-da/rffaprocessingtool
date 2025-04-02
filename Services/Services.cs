@@ -109,11 +109,11 @@ namespace RffaDataComparisonTool.Services
         /// Process files to identify duplicates and non-duplicates
         /// </summary>
         public async Task<ProcessingResult> ProcessFilesAsync(
-    string magaraoPath,
-    string impTopupPath,
-    List<string> selectedSheets,
-    IProgress<string> progress,
-    bool createBackup = true)
+            string magaraoPath,
+            string impTopupPath,
+            List<string> selectedSheets,
+            IProgress<string> progress,
+            bool createBackup = true)
         {
             var result = new ProcessingResult();
 
@@ -430,6 +430,9 @@ namespace RffaDataComparisonTool.Services
 
                 progress.Report($"Highlighted {highlightedCount} duplicate entries in IMP Topup file");
 
+                // Store actual highlighted count in result for UI display
+                result.HighlightedRowsInImpTopup = highlightedCount;
+
                 // Prepare the result
                 result.TotalDuplicates = allDuplicates.Count;
                 result.TotalNonDuplicates = nonDuplicatesBySheet.Values.Sum(list => list.Count);
@@ -570,6 +573,12 @@ namespace RffaDataComparisonTool.Services
         private readonly ObservableCollection<ProcessingRecord> _history = new ObservableCollection<ProcessingRecord>();
 
         public ObservableCollection<ProcessingRecord> History => _history;
+
+        // Clear history before adding new records for a new processing operation
+        public void ClearHistoryForNewProcess()
+        {
+            _history.Clear();
+        }
 
         public void AddRecord(ProcessingRecord record)
         {

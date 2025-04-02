@@ -156,6 +156,13 @@ namespace RffaDataComparisonTool.ViewModels
             set => SetProperty(ref _totalHighlightedRsbsa, value, nameof(TotalHighlightedRsbsa));
         }
 
+        private int _highlightedRowsInImpTopup;
+        public int HighlightedRowsInImpTopup
+        {
+            get => _highlightedRowsInImpTopup;
+            set => SetProperty(ref _highlightedRowsInImpTopup, value, nameof(HighlightedRowsInImpTopup));
+        }
+
         private string _saveLocation;
         public string SaveLocation
         {
@@ -655,6 +662,9 @@ namespace RffaDataComparisonTool.ViewModels
                     }
                 }
 
+                // Clear the history for this new processing operation
+                _historyService.ClearHistoryForNewProcess();
+
                 var result = await _excelProcessor.ProcessFilesAsync(
                     MagaraoPath,
                     ImpTopupPath,
@@ -669,11 +679,14 @@ namespace RffaDataComparisonTool.ViewModels
                 InvalidFarmAreasFound = result.InvalidFarmAreaRecords.Count;
                 _invalidFarmAreaRecords = result.InvalidFarmAreaRecords;
 
+                // Add this line here to store the highlighted rows count
+                HighlightedRowsInImpTopup = result.HighlightedRowsInImpTopup;
+
                 // Calculate total endorsed (should be duplicates minus invalid)
                 TotalEndorsed = DuplicatesFound - InvalidFarmAreasFound;
 
                 // Set total highlighted RSBSA
-                TotalHighlightedRsbsa = DuplicatesFound;
+                TotalHighlightedRsbsa = HighlightedRowsInImpTopup; ;
 
                 // Update duplicates list
                 _duplicatesList.Clear();
@@ -694,14 +707,15 @@ namespace RffaDataComparisonTool.ViewModels
                 CanViewInvalidFarmAreas = _invalidFarmAreaRecords.Count > 0;
                 CanExportBatch = true;
 
-                // Update status
-                StatusMessage = $"Processing complete! Found {result.TotalDuplicates} duplicates, {result.TotalNonDuplicates} non-duplicates, {_invalidFarmAreaRecords.Count} invalid farm areas, {TotalEndorsed} endorsed.";
+                // Update this status message to include both counts
+                StatusMessage = $"Processing complete! Found {result.TotalDuplicates} unique duplicates, highlighted {HighlightedRowsInImpTopup} rows in IMP Topup file, {result.TotalNonDuplicates} non-duplicates, {_invalidFarmAreaRecords.Count} invalid farm areas, {TotalEndorsed} endorsed.";
 
                 // Show success message
                 var sheetsStr = string.Join(", ", sheetsToProcess);
                 var message = $"Processing complete!\n\n" +
-                             $"Processed sheets: {sheetsStr}\n" +
-                             $"Found {result.TotalDuplicates} total duplicates.\n";
+                     $"Processed sheets: {sheetsStr}\n" +
+                     $"Found {result.TotalDuplicates} unique duplicates from RFFA file.\n" +
+                     $"Highlighted {HighlightedRowsInImpTopup} rows in IMP Topup file.\n";
 
                 if (_nonDuplicatesBySheet.Count > 0)
                 {
@@ -715,7 +729,7 @@ namespace RffaDataComparisonTool.ViewModels
                 }
 
                 message += $"Total Endorsed: {TotalEndorsed} (Duplicates minus Invalid Farm Areas)\n";
-                message += $"Total Highlighted RSBSA in RFFA: {TotalHighlightedRsbsa}\n";
+                message += $"Total Highlighted RSBSA in IMP Topup: {HighlightedRowsInImpTopup}\n";
 
                 message += "\nThe files have been updated:";
                 message += "\n- RFFA file: Added Duplicates sheet and highlighted duplicate rows";

@@ -143,6 +143,9 @@ namespace RffaDataComparisonTool.Models
         public string BackupFileName { get; set; }
         public List<FarmAreaRecord> InvalidFarmAreaRecords { get; set; }
 
+        // Added property to track the actual number of rows highlighted in IMP Topup file
+        public int HighlightedRowsInImpTopup { get; set; }
+
         public ProcessingResult()
         {
             DuplicateList = new List<string>();
