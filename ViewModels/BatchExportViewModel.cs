@@ -57,20 +57,6 @@ namespace RffaDataComparisonTool.ViewModels
             }
         }
 
-        private bool _updateExisting;
-        public bool UpdateExisting
-        {
-            get => _updateExisting;
-            set
-            {
-                if (SetProperty(ref _updateExisting, value, nameof(UpdateExisting)))
-                {
-                    OnPropertyChanged(nameof(ExistingFileSelectVisibility));
-                    OnPropertyChanged(nameof(CanExport));
-                }
-            }
-        }
-
         private string _existingFilePath;
         public string ExistingFilePath
         {
@@ -79,6 +65,7 @@ namespace RffaDataComparisonTool.ViewModels
             {
                 if (SetProperty(ref _existingFilePath, value, nameof(ExistingFilePath)))
                 {
+                    OnPropertyChanged(nameof(HasExistingFile));
                     OnPropertyChanged(nameof(CanExport));
                 }
             }
@@ -86,17 +73,18 @@ namespace RffaDataComparisonTool.ViewModels
 
         public string GeneratedBatchFilePath { get; private set; }
 
-        // Helper properties
-        public Visibility ExistingFileSelectVisibility => UpdateExisting ? Visibility.Visible : Visibility.Collapsed;
+        // Property to determine if we have a file to update
+        public bool HasExistingFile => !string.IsNullOrWhiteSpace(ExistingFilePath) && File.Exists(ExistingFilePath);
 
+        // Updated CanExport logic
         public bool CanExport =>
-    // When updating existing file, Municipality and ExistingFilePath are required
-    UpdateExisting
-        ? !string.IsNullOrWhiteSpace(Municipality) && !string.IsNullOrWhiteSpace(ExistingFilePath)
-        // When creating new file, all fields are required
-        : !string.IsNullOrWhiteSpace(BatchNumber) &&
-          !string.IsNullOrWhiteSpace(Province) &&
-          !string.IsNullOrWhiteSpace(Municipality);
+            // When updating existing file, only Municipality is required
+            HasExistingFile
+                ? !string.IsNullOrWhiteSpace(Municipality)
+                // When creating new file, all fields are required
+                : !string.IsNullOrWhiteSpace(BatchNumber) &&
+                  !string.IsNullOrWhiteSpace(Province) &&
+                  !string.IsNullOrWhiteSpace(Municipality);
 
         // Commands
         public ICommand ExportCommand { get; }
@@ -131,20 +119,41 @@ namespace RffaDataComparisonTool.ViewModels
             if (dialog.ShowDialog() == true)
             {
                 ExistingFilePath = dialog.FileName;
-                // Ensure binding updates are triggered
-                OnPropertyChanged(nameof(ExistingFilePath));
-                OnPropertyChanged(nameof(CanExport));
+
+                // Try to extract batch information from filename if file was selected
+                if (HasExistingFile)
+                {
+                    try
+                    {
+                        string fileName = Path.GetFileNameWithoutExtension(ExistingFilePath);
+                        if (fileName.StartsWith("BATCH_", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Try to extract batch number and province from filename like "BATCH_123_PROVINCE.xlsx"
+                            string[] parts = fileName.Substring(6).Split('_');
+                            if (parts.Length >= 1)
+                            {
+                                BatchNumber = parts[0];
+                            }
+                            if (parts.Length >= 2)
+                            {
+                                Province = string.Join("_", parts, 1, parts.Length - 1);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore errors in auto-extraction, user can still manually enter information
+                    }
+                }
             }
         }
-
-        // Update the Export method in BatchExportViewModel.cs:
 
         private async void Export()
         {
             try
             {
                 // Only validate batch number when creating a new file
-                if (!UpdateExisting)
+                if (!HasExistingFile)
                 {
                     // Validate batch number (should be numeric)
                     if (!int.TryParse(BatchNumber, out _))
@@ -158,18 +167,10 @@ namespace RffaDataComparisonTool.ViewModels
                 // Generate file name and path
                 string batchFilePath;
 
-                if (UpdateExisting && !string.IsNullOrEmpty(ExistingFilePath))
+                if (HasExistingFile)
                 {
                     // Use the existing file path directly
                     batchFilePath = ExistingFilePath;
-
-                    // Make sure the file exists and is accessible
-                    if (!File.Exists(batchFilePath))
-                    {
-                        MessageBox.Show($"The selected file does not exist:\n{batchFilePath}",
-                            "File Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
 
                     // Check if the file is accessible (not locked)
                     try
@@ -272,8 +273,8 @@ namespace RffaDataComparisonTool.ViewModels
                 // Enable EPPlus non-commercial use if needed
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-                // Create or open Excel package based on update mode
-                using (var package = UpdateExisting && File.Exists(batchFilePath)
+                // Create or open Excel package based on whether we're updating an existing file
+                using (var package = HasExistingFile && File.Exists(batchFilePath)
                     ? new ExcelPackage(new FileInfo(batchFilePath))
                     : new ExcelPackage())
                 {
@@ -291,8 +292,11 @@ namespace RffaDataComparisonTool.ViewModels
                         sheetName = $"{baseSheetName}_{counter++}";
                     }
 
-                    // Create new sheet
+                    // Create new sheet for data
                     var worksheet = package.Workbook.Worksheets.Add(sheetName);
+
+                    // Create or update the metadata sheet
+                    CreateOrUpdateMetadataSheet(package, sheetName);
 
                     // First step: Read all values from RFFA file to identify duplicates
                     var rffaDuplicates = new Dictionary<string, List<object[]>>();
@@ -400,8 +404,6 @@ namespace RffaDataComparisonTool.ViewModels
                             throw new Exception("The IMP Top-up file appears to be empty.");
 
                         int destRow = 1;
-                        bool headersAdded = false;
-
                         int rows = sourceSheet.Dimension.Rows;
                         int cols = sourceSheet.Dimension.Columns;
 
@@ -421,7 +423,7 @@ namespace RffaDataComparisonTool.ViewModels
                             }
                         }
 
-                        // Add headers from source
+                        // Copy headers from source - exactly as they are in the IMP Topup file
                         for (int col = 1; col <= cols; col++)
                         {
                             var headerValue = sourceSheet.Cells[1, col].Value;
@@ -432,24 +434,8 @@ namespace RffaDataComparisonTool.ViewModels
                             }
                         }
 
-                        // Add additional metadata columns
-                        worksheet.Cells[1, cols + 1].Value = "Export Date";
-                        worksheet.Cells[1, cols + 1].Style.Font.Bold = true;
-
-                        worksheet.Cells[1, cols + 2].Value = "Batch Number";
-                        worksheet.Cells[1, cols + 2].Style.Font.Bold = true;
-
-                        worksheet.Cells[1, cols + 3].Value = "Province";
-                        worksheet.Cells[1, cols + 3].Style.Font.Bold = true;
-
-                        worksheet.Cells[1, cols + 4].Value = "Municipality";
-                        worksheet.Cells[1, cols + 4].Style.Font.Bold = true;
-
-                        worksheet.Cells[1, cols + 5].Value = "Processing Date";
-                        worksheet.Cells[1, cols + 5].Style.Font.Bold = true;
-
                         // Format header row
-                        var headerRange = worksheet.Cells[1, 1, 1, cols + 5];
+                        var headerRange = worksheet.Cells[1, 1, 1, cols];
                         headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                         headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
 
@@ -472,18 +458,11 @@ namespace RffaDataComparisonTool.ViewModels
                                 // This is a duplicate - add it to the export
                                 processedRsbsa.Add(rsbsaValue);
 
-                                // Copy entire row from IMP Top-up
+                                // Copy entire row from IMP Top-up file exactly as is
                                 for (int col = 1; col <= cols; col++)
                                 {
                                     worksheet.Cells[destRow, col].Value = sourceSheet.Cells[row, col].Value;
                                 }
-
-                                // Add metadata
-                                worksheet.Cells[destRow, cols + 1].Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                                worksheet.Cells[destRow, cols + 2].Value = BatchNumber;
-                                worksheet.Cells[destRow, cols + 3].Value = Province;
-                                worksheet.Cells[destRow, cols + 4].Value = Municipality;
-                                worksheet.Cells[destRow, cols + 5].Value = DateTime.Now.ToString("yyyy-MM-dd");
 
                                 destRow++;
                                 rowsAdded++;
@@ -496,8 +475,11 @@ namespace RffaDataComparisonTool.ViewModels
                             worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
                         }
 
+                        // Update the metadata sheet with the number of records
+                        UpdateMetadataWithRecordCount(package, sheetName, rowsAdded);
+
                         // Provide feedback on how many rows were added
-                        MessageBox.Show($"Added {rowsAdded} duplicate rows to the batch export.",
+                        MessageBox.Show($"Added {rowsAdded} duplicate records to sheet '{sheetName}' in the batch export.",
                             "Export Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
 
@@ -555,14 +537,86 @@ namespace RffaDataComparisonTool.ViewModels
                         });
                         return false;
                     }
-                    return true;
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error creating batch file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
-            }            
+            }
+        }
+
+        // Helper method to create or update the metadata sheet
+        private void CreateOrUpdateMetadataSheet(ExcelPackage package, string dataSheetName)
+        {
+            // Look for existing metadata sheet
+            var metadataSheet = package.Workbook.Worksheets["Metadata"];
+            bool isNewSheet = metadataSheet == null;
+
+            // Create the sheet if it doesn't exist
+            if (isNewSheet)
+            {
+                metadataSheet = package.Workbook.Worksheets.Add("Metadata");
+
+                // Set up headers for new sheet
+                metadataSheet.Cells[1, 1].Value = "Sheet Name";
+                metadataSheet.Cells[1, 2].Value = "Municipality";
+                metadataSheet.Cells[1, 3].Value = "Province";
+                metadataSheet.Cells[1, 4].Value = "Batch Number";
+                metadataSheet.Cells[1, 5].Value = "Export Date";
+                metadataSheet.Cells[1, 6].Value = "Records Count";
+
+                // Format header row
+                var headerRange = metadataSheet.Cells[1, 1, 1, 6];
+                headerRange.Style.Font.Bold = true;
+                headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+
+            // Find the next available row
+            int row = 2;
+            if (!isNewSheet && metadataSheet.Dimension != null)
+            {
+                row = metadataSheet.Dimension.Rows + 1;
+            }
+
+            // Add the new sheet's metadata
+            metadataSheet.Cells[row, 1].Value = dataSheetName;
+            metadataSheet.Cells[row, 2].Value = Municipality;
+            metadataSheet.Cells[row, 3].Value = Province;
+            metadataSheet.Cells[row, 4].Value = BatchNumber;
+            metadataSheet.Cells[row, 5].Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            // Records count will be updated after processing
+
+            // Auto-fit columns
+            metadataSheet.Cells[metadataSheet.Dimension.Address].AutoFitColumns();
+
+            // Ensure Metadata sheet stays first
+            if (package.Workbook.Worksheets["Metadata"] != package.Workbook.Worksheets[0])
+            {
+                package.Workbook.Worksheets.MoveToStart("Metadata");
+            }
+        }
+
+        // Helper method to update the metadata with record count
+        private void UpdateMetadataWithRecordCount(ExcelPackage package, string dataSheetName, int recordCount)
+        {
+            var metadataSheet = package.Workbook.Worksheets["Metadata"];
+            if (metadataSheet == null) return;
+
+            // Find the row for this sheet
+            if (metadataSheet.Dimension == null) return;
+
+            int rows = metadataSheet.Dimension.Rows;
+            for (int row = 2; row <= rows; row++)
+            {
+                string sheetName = metadataSheet.Cells[row, 1].Value?.ToString();
+                if (sheetName == dataSheetName)
+                {
+                    metadataSheet.Cells[row, 6].Value = recordCount;
+                    break;
+                }
+            }
         }
 
         // Helper method to find the RSBSA column in a worksheet

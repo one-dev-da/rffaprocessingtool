@@ -16,5 +16,5 @@ C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\App.xa
 211-198288822
 MainWindow.xaml;Views\BackupConfirmWindow.xaml;Views\BatchExport.xaml;Views\InvalidFarmAreaWindow.xaml;Views\LoadingOverlay.xaml;Views\NonDuplicatesWindow.xaml;Views\ProcessingLogWindow.xaml;Views\SheetSelectionWindow.xaml;
 
-True
+False
 

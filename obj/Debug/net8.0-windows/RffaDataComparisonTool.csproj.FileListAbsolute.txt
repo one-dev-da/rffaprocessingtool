@@ -50,3 +50,4 @@ C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\bin\De
 C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\bin\Debug\net8.0-windows\RffaDataComparisonTool.pdb
 C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\obj\Debug\net8.0-windows\RffaDataComparisonTool.genruntimeconfig.cache
 C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\obj\Debug\net8.0-windows\ref\RffaDataComparisonTool.dll
+C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\obj\Debug\net8.0-windows\RffaDataComparisonTool.sourcelink.json
