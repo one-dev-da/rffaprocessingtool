@@ -390,21 +390,61 @@ namespace RffaDataComparisonTool.Services
                     progress.Report("Saved changes to RFFA file with highlighted duplicates and new Duplicates sheet");
                 }
 
-                // Highlight duplicates in the IMP Topup file
+                // Updated highlighting logic for IMP Topup file
                 progress.Report("\nHighlighting duplicates in IMP Topup file...");
 
                 int highlightedCount = 0;
+                int previouslyHighlightedCount = 0;
+
+                // Color definitions
+                System.Drawing.Color currentHighlightColor = System.Drawing.Color.FromArgb(119, 223, 216); // Turquoise #77DFD8
+                System.Drawing.Color previousHighlightColor = System.Drawing.Color.FromArgb(255, 255, 0); // Yellow #FFFF00
 
                 using (var package = new ExcelPackage(new FileInfo(impTopupPath)))
                 {
                     var worksheet = package.Workbook.Worksheets[0]; // First worksheet
 
-                    // Define the turquoise fill
-                    var fill = worksheet.Cells["A1"].Style.Fill;
-                    fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                    fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(119, 223, 216)); // Turquoise
-
                     int rows = worksheet.Dimension.Rows;
+
+                    // First step: Update any existing highlighted rows to yellow
+                    for (int row = 2; row <= rows; row++) // Skip header row
+                    {
+                        // Check if this row is already highlighted with the turquoise color
+                        bool isTurquoiseHighlighted = false;
+                        var cell = worksheet.Cells[row, 1]; // Check first cell in row
+
+                        if (cell.Style.Fill.PatternType == OfficeOpenXml.Style.ExcelFillStyle.Solid)
+                        {
+                            var bgColor = cell.Style.Fill.BackgroundColor;
+
+                            // Check if it's the turquoise color (approximate match)
+                            if (bgColor.Rgb != null &&
+                                (bgColor.Rgb.Equals("FF77DFD8") || // Exact match
+                                 bgColor.Rgb.StartsWith("FF") && // Check for similar turquoise shades
+                                 bgColor.Rgb.Substring(2, 2).Equals("77", StringComparison.OrdinalIgnoreCase) &&
+                                 bgColor.Rgb.Substring(4, 2).Equals("DF", StringComparison.OrdinalIgnoreCase) &&
+                                 bgColor.Rgb.Substring(6, 2).Equals("D8", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                isTurquoiseHighlighted = true;
+                            }
+                        }
+
+                        if (isTurquoiseHighlighted)
+                        {
+                            // Change color to yellow
+                            int lastColumn = Math.Min(20, worksheet.Dimension.Columns);
+                            for (int col = 1; col <= lastColumn; col++)
+                            {
+                                worksheet.Cells[row, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(previousHighlightColor);
+                            }
+                            previouslyHighlightedCount++;
+                        }
+                    }
+
+                    progress.Report($"Changed {previouslyHighlightedCount} previously highlighted rows to yellow");
+
+                    // Second step: Highlight new duplicates with turquoise
                     for (int row = 2; row <= rows; row++) // Skip header row
                     {
                         var cellValue = worksheet.Cells[row, 1].Value; // Column A
@@ -416,10 +456,13 @@ namespace RffaDataComparisonTool.Services
                             {
                                 highlightedCount++;
 
-                                // Highlight the entire row
+                                // Highlight the entire row with turquoise
                                 int lastColumn = Math.Min(20, worksheet.Dimension.Columns);
-                                worksheet.Cells[row, 1, row, lastColumn].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                worksheet.Cells[row, 1, row, lastColumn].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(119, 223, 216));
+                                for (int col = 1; col <= lastColumn; col++)
+                                {
+                                    worksheet.Cells[row, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                    worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(currentHighlightColor);
+                                }
                             }
                         }
                     }
@@ -428,10 +471,12 @@ namespace RffaDataComparisonTool.Services
                     package.Save();
                 }
 
-                progress.Report($"Highlighted {highlightedCount} duplicate entries in IMP Topup file");
+                progress.Report($"Highlighted {highlightedCount} new duplicate entries in IMP Topup file with turquoise");
+                progress.Report($"Changed {previouslyHighlightedCount} previously highlighted rows to yellow");
 
-                // Store actual highlighted count in result for UI display
+                // Store both counts in result for UI display
                 result.HighlightedRowsInImpTopup = highlightedCount;
+                result.PreviouslyHighlightedRowsInImpTopup = previouslyHighlightedCount;
 
                 // Prepare the result
                 result.TotalDuplicates = allDuplicates.Count;

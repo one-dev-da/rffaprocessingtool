@@ -143,8 +143,11 @@ namespace RffaDataComparisonTool.Models
         public string BackupFileName { get; set; }
         public List<FarmAreaRecord> InvalidFarmAreaRecords { get; set; }
 
-        // Added property to track the actual number of rows highlighted in IMP Topup file
+        // Number of rows highlighted with current turquoise color (#77DFD8)
         public int HighlightedRowsInImpTopup { get; set; }
+
+        // Number of rows changed from turquoise to yellow
+        public int PreviouslyHighlightedRowsInImpTopup { get; set; }
 
         public ProcessingResult()
         {

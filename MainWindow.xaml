@@ -245,6 +245,7 @@
 						<TextBlock Text="Results" Style="{StaticResource SectionTitleStyle}"/>
 
 						<!-- Counts - Use WrapPanel instead of StackPanel for better wrapping -->
+						<!-- Update the Results section to add the yellow highlight count -->
 						<WrapPanel Margin="0,5,0,15">
 							<!-- Duplicates Count -->
 							<Border Style="{StaticResource CountBadgeStyle}" Background="#E3F2FD" Margin="0,0,10,5">
@@ -286,11 +287,31 @@
 								</StackPanel>
 							</Border>
 
-							<!-- Total Highlighted RSBSA Count -->
+							<!-- Current Highlights (Turquoise) -->
+							<Border Style="{StaticResource CountBadgeStyle}" Background="#77DFD8" Margin="0,0,10,5">
+								<StackPanel Orientation="Horizontal">
+									<TextBlock Text="Current Highlighted: " VerticalAlignment="Center"/>
+									<TextBlock Text="{Binding HighlightedRowsInImpTopup}"
+											 FontWeight="Bold" FontSize="16"
+											 Foreground="#006064" Margin="5,0,0,0"/>
+								</StackPanel>
+							</Border>
+
+							<!-- Previous Highlights (Yellow) -->
+							<Border Style="{StaticResource CountBadgeStyle}" Background="#FFFF00" Margin="0,0,10,5">
+								<StackPanel Orientation="Horizontal">
+									<TextBlock Text="Previous Highlighted: " VerticalAlignment="Center"/>
+									<TextBlock Text="{Binding PreviouslyHighlightedRowsInImpTopup}"
+											 FontWeight="Bold" FontSize="16"
+											 Foreground="#FF6F00" Margin="5,0,0,0"/>
+								</StackPanel>
+							</Border>
+
+							<!-- Total Highlights (Both Colors) -->
 							<Border Style="{StaticResource CountBadgeStyle}" Background="#F3E5F5" Margin="0,0,10,5">
 								<StackPanel Orientation="Horizontal">
-									<TextBlock Text="Total Highlighted RSBSA: " VerticalAlignment="Center"/>
-									<TextBlock Text="{Binding TotalHighlightedRsbsa}"
+									<TextBlock Text="Total Highlighted Rows: " VerticalAlignment="Center"/>
+									<TextBlock Text="{Binding TotalHighlightedRowsAllColors}"
 											 FontWeight="Bold" FontSize="16"
 											 Foreground="#6A1B9A" Margin="5,0,0,0"/>
 								</StackPanel>

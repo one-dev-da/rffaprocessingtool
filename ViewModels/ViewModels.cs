@@ -163,6 +163,15 @@ namespace RffaDataComparisonTool.ViewModels
             set => SetProperty(ref _highlightedRowsInImpTopup, value, nameof(HighlightedRowsInImpTopup));
         }
 
+        private int _previouslyHighlightedRowsInImpTopup;
+        public int PreviouslyHighlightedRowsInImpTopup
+        {
+            get => _previouslyHighlightedRowsInImpTopup;
+            set => SetProperty(ref _previouslyHighlightedRowsInImpTopup, value, nameof(PreviouslyHighlightedRowsInImpTopup));
+        }
+
+        public int TotalHighlightedRowsAllColors => HighlightedRowsInImpTopup + PreviouslyHighlightedRowsInImpTopup;
+
         private string _saveLocation;
         public string SaveLocation
         {
@@ -290,6 +299,11 @@ namespace RffaDataComparisonTool.ViewModels
             NextPageCommand = new RelayCommand(_ => GoToNextPage(), _ => CanGoToNextPage());
             LastPageCommand = new RelayCommand(_ => GoToLastPage(), _ => CanGoToLastPage());
             ExportBatchCommand = new RelayCommand(_ => ExportBatch(), _ => CanExportBatch);
+        }
+
+        private void UpdateTotalHighlightedRowsAllColors()
+        {
+            OnPropertyChanged(nameof(TotalHighlightedRowsAllColors));
         }
 
         private void ExportBatch()
@@ -678,9 +692,11 @@ namespace RffaDataComparisonTool.ViewModels
                 SaveLocation = result.SaveLocation;
                 InvalidFarmAreasFound = result.InvalidFarmAreaRecords.Count;
                 _invalidFarmAreaRecords = result.InvalidFarmAreaRecords;
-
-                // Add this line here to store the highlighted rows count
+                
                 HighlightedRowsInImpTopup = result.HighlightedRowsInImpTopup;
+
+                PreviouslyHighlightedRowsInImpTopup = result.PreviouslyHighlightedRowsInImpTopup;
+                UpdateTotalHighlightedRowsAllColors();
 
                 // Calculate total endorsed (should be duplicates minus invalid)
                 TotalEndorsed = DuplicatesFound - InvalidFarmAreasFound;
@@ -708,14 +724,23 @@ namespace RffaDataComparisonTool.ViewModels
                 CanExportBatch = true;
 
                 // Update this status message to include both counts
-                StatusMessage = $"Processing complete! Found {result.TotalDuplicates} unique duplicates, highlighted {HighlightedRowsInImpTopup} rows in IMP Topup file, {result.TotalNonDuplicates} non-duplicates, {_invalidFarmAreaRecords.Count} invalid farm areas, {TotalEndorsed} endorsed.";
+                // Update status message to include all counts
+                StatusMessage = $"Processing complete! Found {result.TotalDuplicates} unique duplicates, " +
+                               $"highlighted {HighlightedRowsInImpTopup} rows with turquoise, " +
+                               $"{PreviouslyHighlightedRowsInImpTopup} rows with yellow, " +
+                               $"{result.TotalNonDuplicates} non-duplicates, " +
+                               $"{_invalidFarmAreaRecords.Count} invalid farm areas, " +
+                               $"{TotalEndorsed} endorsed.";
 
+                // Show success message
                 // Show success message
                 var sheetsStr = string.Join(", ", sheetsToProcess);
                 var message = $"Processing complete!\n\n" +
-                     $"Processed sheets: {sheetsStr}\n" +
-                     $"Found {result.TotalDuplicates} unique duplicates from RFFA file.\n" +
-                     $"Highlighted {HighlightedRowsInImpTopup} rows in IMP Topup file.\n";
+                             $"Processed sheets: {sheetsStr}\n" +
+                             $"Found {result.TotalDuplicates} unique duplicates from RFFA file.\n" +
+                             $"Highlighted {HighlightedRowsInImpTopup} rows in IMP Topup file with turquoise.\n" +
+                             $"Changed {PreviouslyHighlightedRowsInImpTopup} previously highlighted rows to yellow.\n" +
+                             $"Total highlighted rows: {TotalHighlightedRowsAllColors} (Current + Previous)\n";
 
                 if (_nonDuplicatesBySheet.Count > 0)
                 {
