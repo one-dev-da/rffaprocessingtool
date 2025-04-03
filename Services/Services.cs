@@ -396,63 +396,70 @@ namespace RffaDataComparisonTool.Services
                 int highlightedCount = 0;
                 int previouslyHighlightedCount = 0;
 
-                // Color definitions
-                System.Drawing.Color currentHighlightColor = System.Drawing.Color.FromArgb(119, 223, 216); // Turquoise #77DFD8
-                System.Drawing.Color previousHighlightColor = System.Drawing.Color.FromArgb(255, 255, 0); // Yellow #FFFF00
+                // Color definitions - exact hex values
+                System.Drawing.Color turquoiseColor = System.Drawing.Color.FromArgb(119, 223, 216); // #77DFD8 (Current processing)
+                System.Drawing.Color yellowColor = System.Drawing.Color.FromArgb(255, 255, 0);      // #FFFF00 (Previous processing)
 
                 using (var package = new ExcelPackage(new FileInfo(impTopupPath)))
                 {
                     var worksheet = package.Workbook.Worksheets[0]; // First worksheet
-
                     int rows = worksheet.Dimension.Rows;
 
-                    // First step: Update any existing highlighted rows to yellow
+                    // Create a dictionary to track RSBSA numbers and their rows
+                    Dictionary<string, List<int>> rsbsaToRows = new Dictionary<string, List<int>>();
+
+                    // First pass: Map all RSBSA numbers to their row numbers and identify currently highlighted rows
+                    HashSet<int> previouslyHighlightedRows = new HashSet<int>();
+
                     for (int row = 2; row <= rows; row++) // Skip header row
                     {
-                        // Check if this row is already highlighted with the turquoise color
-                        bool isTurquoiseHighlighted = false;
-                        var cell = worksheet.Cells[row, 1]; // Check first cell in row
-
-                        if (cell.Style.Fill.PatternType == OfficeOpenXml.Style.ExcelFillStyle.Solid)
+                        var cellValue = worksheet.Cells[row, 1].Value; // RSBSA number in Column A
+                        if (cellValue != null)
                         {
-                            var bgColor = cell.Style.Fill.BackgroundColor;
+                            string rsbsaNumber = cellValue.ToString().Trim();
 
-                            // Check if it's the turquoise color (approximate match)
-                            if (bgColor.Rgb != null &&
-                                (bgColor.Rgb.Equals("FF77DFD8") || // Exact match
-                                 bgColor.Rgb.StartsWith("FF") && // Check for similar turquoise shades
-                                 bgColor.Rgb.Substring(2, 2).Equals("77", StringComparison.OrdinalIgnoreCase) &&
-                                 bgColor.Rgb.Substring(4, 2).Equals("DF", StringComparison.OrdinalIgnoreCase) &&
-                                 bgColor.Rgb.Substring(6, 2).Equals("D8", StringComparison.OrdinalIgnoreCase)))
+                            // Map RSBSA to row for quick lookup
+                            if (!rsbsaToRows.ContainsKey(rsbsaNumber))
                             {
-                                isTurquoiseHighlighted = true;
+                                rsbsaToRows[rsbsaNumber] = new List<int>();
                             }
-                        }
+                            rsbsaToRows[rsbsaNumber].Add(row);
 
-                        if (isTurquoiseHighlighted)
-                        {
-                            // Change color to yellow
-                            int lastColumn = Math.Min(20, worksheet.Dimension.Columns);
-                            for (int col = 1; col <= lastColumn; col++)
+                            // Check if this row is already highlighted with any color
+                            var cell = worksheet.Cells[row, 1];
+                            if (cell.Style.Fill.PatternType == OfficeOpenXml.Style.ExcelFillStyle.Solid)
                             {
-                                worksheet.Cells[row, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(previousHighlightColor);
+                                previouslyHighlightedRows.Add(row);
+
+                                // Check if the color is turquoise (to count previously highlighted rows)
+                                var bgColor = cell.Style.Fill.BackgroundColor;
+                                if (bgColor.Rgb != null &&
+                                    bgColor.Rgb.StartsWith("FF") &&
+                                    bgColor.Rgb.Substring(2, 6).Equals("77DFD8", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    previouslyHighlightedCount++;
+                                }
                             }
-                            previouslyHighlightedCount++;
                         }
                     }
 
-                    progress.Report($"Changed {previouslyHighlightedCount} previously highlighted rows to yellow");
-
-                    // Second step: Highlight new duplicates with turquoise
-                    for (int row = 2; row <= rows; row++) // Skip header row
+                    // Second pass: Turn ALL previously highlighted rows to yellow
+                    foreach (int row in previouslyHighlightedRows)
                     {
-                        var cellValue = worksheet.Cells[row, 1].Value; // Column A
-                        if (cellValue != null)
+                        int lastColumn = Math.Min(20, worksheet.Dimension.Columns);
+                        for (int col = 1; col <= lastColumn; col++)
                         {
-                            string cellValueStr = cellValue.ToString().Trim();
+                            worksheet.Cells[row, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                            worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(yellowColor);
+                        }
+                    }
 
-                            if (allDuplicates.Contains(cellValueStr))
+                    // Third pass: Highlight new duplicates with turquoise
+                    foreach (string rsbsa in allDuplicates)
+                    {
+                        if (rsbsaToRows.ContainsKey(rsbsa))
+                        {
+                            foreach (int row in rsbsaToRows[rsbsa])
                             {
                                 highlightedCount++;
 
@@ -461,7 +468,7 @@ namespace RffaDataComparisonTool.Services
                                 for (int col = 1; col <= lastColumn; col++)
                                 {
                                     worksheet.Cells[row, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                    worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(currentHighlightColor);
+                                    worksheet.Cells[row, col].Style.Fill.BackgroundColor.SetColor(turquoiseColor);
                                 }
                             }
                         }
@@ -471,8 +478,8 @@ namespace RffaDataComparisonTool.Services
                     package.Save();
                 }
 
-                progress.Report($"Highlighted {highlightedCount} new duplicate entries in IMP Topup file with turquoise");
-                progress.Report($"Changed {previouslyHighlightedCount} previously highlighted rows to yellow");
+                progress.Report($"Highlighted {highlightedCount} duplicate entries in IMP Topup file with turquoise (#77DFD8)");
+                progress.Report($"Changed {previouslyHighlightedCount} previously highlighted rows to yellow (#FFFF00)");
 
                 // Store both counts in result for UI display
                 result.HighlightedRowsInImpTopup = highlightedCount;

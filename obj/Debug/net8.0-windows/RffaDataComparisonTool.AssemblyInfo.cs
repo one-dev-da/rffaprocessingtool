@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RffaDataComparisonTool")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d602ccab05ea3b0126a38669a75b9cb587da4a22")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a523d4d3f4bfb15ac787f7f865618156670b26a8")]
 [assembly: System.Reflection.AssemblyProductAttribute("RffaDataComparisonTool")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RffaDataComparisonTool")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

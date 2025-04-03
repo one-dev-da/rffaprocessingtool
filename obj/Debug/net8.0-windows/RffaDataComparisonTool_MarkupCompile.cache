@@ -8,13 +8,13 @@ C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\obj\De
 RffaDataComparisonTool
 none
 false
-TRACE;DEBUG;NET;NET8_0;NETCOREAPP
+TRACE;RELEASE;NET;NET8_0;NETCOREAPP
 C:\Users\Admin\source\repos\RffaDataComparisonTool\RffaDataComparisonTool\App.xaml
 8-109383547
 
-20-133391391
-211-198288822
+29-406938895
+422-396577644
 MainWindow.xaml;Views\BackupConfirmWindow.xaml;Views\BatchExport.xaml;Views\InvalidFarmAreaWindow.xaml;Views\LoadingOverlay.xaml;Views\NonDuplicatesWindow.xaml;Views\ProcessingLogWindow.xaml;Views\SheetSelectionWindow.xaml;
 
-False
+True
 
